@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Pet, FilterState } from '@/lib/types'
 import PetCard from '@/components/PetCard'
@@ -65,9 +66,9 @@ export default function Home() {
       {/* Header */}
       <div className="flex justify-between items-center py-4">
         <h1 className="text-xl font-medium text-[#C04828]">patitas.</h1>
-        <button className="text-gray-400 text-sm">
+        <Link href="/login" className="text-gray-400 text-sm">
           Iniciar sesión
-        </button>
+        </Link>
       </div>
 
       {/* Search (placeholder for now) */}
