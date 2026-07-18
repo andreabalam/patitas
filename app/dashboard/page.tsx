@@ -31,7 +31,7 @@ export default function Dashboard() {
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching pets:', error)
+        console.error('Error fetching pets:', error.message, error.details ?? '')
       } else {
         setPets(data || [])
       }

@@ -50,7 +50,7 @@ export default function Home() {
       const { data, error } = await query
 
       if (error) {
-        console.error('Error fetching pets:', error)
+        console.error('Error fetching pets:', error.message, error.details ?? '')
       } else {
         setPets(data || [])
       }
