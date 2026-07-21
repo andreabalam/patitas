@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Pet } from '@/lib/types'
+import FavoriteButton from '@/components/FavoriteButton'
 
 interface PetCardProps {
   pet: Pet
@@ -42,7 +43,7 @@ export default function PetCard({ pet }: PetCardProps) {
             <span className="text-xs text-gray-400">
               <span className="text-[#C04828] font-medium">{pet.days_in_shelter}</span> días esperando
             </span>
-            <span className="text-gray-300 text-base">♡</span>
+            <FavoriteButton petId={pet.id} />
           </div>
         </div>
       </div>

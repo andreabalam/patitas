@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { PetPhoto } from '@/lib/types'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import FavoriteButton from '@/components/FavoriteButton'
 
 export default async function PetDetail({
   params,
@@ -37,7 +38,7 @@ export default async function PetDetail({
         <Link href="/" className="text-gray-500 text-sm flex items-center gap-1">
           ← Volver
         </Link>
-        <button className="text-gray-400 text-xl">♡</button>
+        <FavoriteButton petId={pet.id} className="text-xl" />
       </div>
 
       {/* Photo */}
@@ -114,9 +115,12 @@ export default async function PetDetail({
 
       {/* CTA — fixed at bottom */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-6 pt-3 bg-white border-t border-gray-100">
-        <button className="w-full bg-[#C04828] text-white rounded-xl py-3.5 text-sm font-medium mb-2">
+        <Link
+          href={`/pets/${pet.id}/adopt`}
+          className="block w-full bg-[#C04828] text-white rounded-xl py-3.5 text-sm font-medium mb-2 text-center"
+        >
           Quiero adoptar a {pet.name}
-        </button>
+        </Link>
         <button className="w-full border border-gray-200 text-gray-700 rounded-xl py-3.5 text-sm">
           Hacer una pregunta
         </button>

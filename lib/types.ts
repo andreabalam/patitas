@@ -50,6 +50,30 @@ export interface MexicanState {
   code: string
 }
 
+export type RequestStatus = 'pending' | 'approved' | 'declined'
+
+export interface SurveyAnswers {
+  adopter_name: string
+  adopter_email: string
+  home_type: 'casa' | 'departamento' | 'otro'
+  outdoor_space: boolean
+  other_pets: string
+  experience: 'primera_vez' | 'con_experiencia'
+  city: string
+  state: string
+}
+
+export interface AdoptionRequest {
+  id: string
+  pet_id: string
+  adopter_id: string
+  status: RequestStatus
+  survey_answers: SurveyAnswers
+  created_at: string
+  // joined from pets
+  pets?: Pet
+}
+
 export interface FilterState {
   species: Species | 'all'
   state: string | 'all'
