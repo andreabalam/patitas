@@ -74,6 +74,20 @@ export interface AdoptionRequest {
   pets?: Pet
 }
 
+export interface Conversation {
+  id: string
+  adoption_request_id: string
+  created_at: string
+}
+
+export interface Message {
+  id: string
+  conversation_id: string
+  sender_id: string
+  body: string
+  created_at: string
+}
+
 export interface FilterState {
   species: Species | 'all'
   state: string | 'all'

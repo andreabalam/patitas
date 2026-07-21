@@ -10,12 +10,19 @@ import FilterBar from '@/components/FilterBar'
 export default function Home() {
   const [pets, setPets] = useState<Pet[]>([])
   const [loading, setLoading] = useState(true)
+  const [signedIn, setSignedIn] = useState(false)
   const [filters, setFilters] = useState<FilterState>({
     species: 'all',
     state: 'all',
     size: 'all',
     urgent_only: false,
   })
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSignedIn(!!session)
+    })
+  }, [])
 
   useEffect(() => {
     async function fetchPets() {
@@ -66,9 +73,16 @@ export default function Home() {
       {/* Header */}
       <div className="flex justify-between items-center py-4">
         <h1 className="text-xl font-medium text-[#C04828]">patitas.</h1>
-        <Link href="/login" className="text-gray-400 text-sm">
-          Iniciar sesión
-        </Link>
+        {signedIn ? (
+          <div className="flex gap-3 text-xs text-gray-400">
+            <Link href="/my-requests">Mis solicitudes</Link>
+            <Link href="/dashboard">Mi panel</Link>
+          </div>
+        ) : (
+          <Link href="/login" className="text-gray-400 text-sm">
+            Iniciar sesión
+          </Link>
+        )}
       </div>
 
       {/* Search (placeholder for now) */}

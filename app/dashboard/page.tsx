@@ -5,19 +5,19 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { Pet, AdoptionRequest, RequestStatus } from '@/lib/types'
+import { statusLabels } from '@/lib/labels'
 import PetCard from '@/components/PetCard'
+import MessageThread from '@/components/MessageThread'
 
-const statusLabels: Record<RequestStatus, { label: string; classes: string }> = {
-  pending: { label: 'Pendiente', classes: 'bg-orange-50 text-[#C04828] border-orange-100' },
-  approved: { label: 'Aprobada', classes: 'bg-[#EAF3DE] text-[#3B6D11] border-green-100' },
-  declined: { label: 'Rechazada', classes: 'bg-gray-50 text-gray-500 border-gray-200' },
-}
+const URGENT_SUGGESTION_THRESHOLD_DAYS = 30
 
 export default function Dashboard() {
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
   const [pets, setPets] = useState<Pet[]>([])
   const [requests, setRequests] = useState<AdoptionRequest[]>([])
   const [loading, setLoading] = useState(true)
+  const [openThread, setOpenThread] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -27,6 +27,7 @@ export default function Dashboard() {
         router.replace('/login')
         return
       }
+      setUserId(session.user.id)
 
       const [petsRes, requestsRes] = await Promise.all([
         supabase
@@ -39,7 +40,7 @@ export default function Dashboard() {
           .order('created_at', { ascending: false }),
         supabase
           .from('adoption_requests')
-          .select('*, pets!inner(name, created_by)')
+          .select('*, pets!inner(name, created_by, is_active)')
           .eq('pets.created_by', session.user.id)
           .order('created_at', { ascending: false }),
       ])
@@ -79,6 +80,94 @@ export default function Dashboard() {
     }
 
     setRequests(reqs => reqs.map(r => (r.id === id ? { ...r, status } : r)))
+  }
+
+  async function markAsAdopted(req: AdoptionRequest) {
+    const { error: petError } = await supabase
+      .from('pets')
+      .update({ is_active: false })
+      .eq('id', req.pet_id)
+
+    if (petError) {
+      console.error('Error marking pet as adopted:', petError.message)
+      return
+    }
+
+    const { data: otherPending, error: findError } = await supabase
+      .from('adoption_requests')
+      .select('id')
+      .eq('pet_id', req.pet_id)
+      .eq('status', 'pending')
+      .neq('id', req.id)
+
+    if (findError) {
+      console.error('Error finding other pending requests:', findError.message)
+    }
+
+    const declinedIds = (otherPending || []).map(r => r.id)
+
+    if (declinedIds.length > 0) {
+      const { error: declineError } = await supabase
+        .from('adoption_requests')
+        .update({ status: 'declined' })
+        .in('id', declinedIds)
+
+      if (declineError) {
+        console.error('Error declining other requests:', declineError.message)
+      }
+
+      for (const declinedId of declinedIds) {
+        const { data: existingConv } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('adoption_request_id', declinedId)
+          .maybeSingle()
+
+        let convId = existingConv?.id ?? null
+
+        if (!convId) {
+          const { data: created } = await supabase
+            .from('conversations')
+            .insert({ adoption_request_id: declinedId })
+            .select('id')
+            .single()
+          convId = created?.id ?? null
+        }
+
+        if (convId) {
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: convId,
+              sender_id: null,
+              body: 'Esta mascota ya fue adoptada por otra familia. ¡Gracias por tu interés!',
+            })
+        }
+      }
+    }
+
+    setPets(ps => ps.map(p => (p.id === req.pet_id ? { ...p, is_active: false } : p)))
+    setRequests(reqs =>
+      reqs.map(r => {
+        if (r.id === req.id) return { ...r, status: 'approved', pets: r.pets ? { ...r.pets, is_active: false } : r.pets }
+        if (declinedIds.includes(r.id)) return { ...r, status: 'declined' }
+        return r
+      })
+    )
+  }
+
+  async function suggestUrgent(petId: string) {
+    const { error } = await supabase
+      .from('pets')
+      .update({ is_urgent: true })
+      .eq('id', petId)
+
+    if (error) {
+      console.error('Error marking pet as urgent:', error.message)
+      return
+    }
+
+    setPets(ps => ps.map(p => (p.id === petId ? { ...p, is_urgent: true } : p)))
   }
 
   const pending = requests.filter(r => r.status === 'pending')
@@ -143,7 +232,7 @@ export default function Dashboard() {
                   </p>
 
                   {req.status === 'pending' && (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mb-2">
                       <button
                         onClick={() => updateRequestStatus(req.id, 'approved')}
                         className="flex-1 bg-[#C04828] text-white rounded-xl py-2 text-xs font-medium"
@@ -158,6 +247,30 @@ export default function Dashboard() {
                       </button>
                     </div>
                   )}
+
+                  {req.status === 'approved' && req.pets?.is_active !== false && (
+                    <button
+                      onClick={() => markAsAdopted(req)}
+                      className="w-full bg-[#3B6D11] text-white rounded-xl py-2 text-xs font-medium mb-2"
+                    >
+                      Marcar como adoptado
+                    </button>
+                  )}
+
+                  {req.status === 'approved' && req.pets?.is_active === false && (
+                    <p className="text-xs text-[#3B6D11] mb-2">✓ Mascota adoptada</p>
+                  )}
+
+                  <button
+                    onClick={() => setOpenThread(openThread === req.id ? null : req.id)}
+                    className="text-xs text-[#C04828] underline"
+                  >
+                    {openThread === req.id ? 'Ocultar mensajes' : 'Ver mensajes'}
+                  </button>
+
+                  {openThread === req.id && userId && (
+                    <MessageThread adoptionRequestId={req.id} currentUserId={userId} />
+                  )}
                 </div>
               )
             })}
@@ -168,7 +281,7 @@ export default function Dashboard() {
       {/* My pets */}
       <div className="flex justify-between items-baseline mb-4">
         <h2 className="text-lg font-medium text-gray-900">Mis mascotas</h2>
-        <span className="text-xs text-gray-400">{pets.length} de 10 activas</span>
+        <span className="text-xs text-gray-400">{pets.filter(p => p.is_active).length} de 10 activas</span>
       </div>
 
       <Link
@@ -198,7 +311,25 @@ export default function Dashboard() {
       ) : (
         <div className="grid grid-cols-2 gap-3">
           {pets.map(pet => (
-            <PetCard key={pet.id} pet={pet} />
+            <div key={pet.id} className={!pet.is_active ? 'opacity-60' : undefined}>
+              <PetCard pet={pet} />
+              {!pet.is_active && (
+                <p className="text-xs text-[#3B6D11] text-center mt-1">✓ Adoptada</p>
+              )}
+              {pet.is_active && !pet.is_urgent && pet.days_in_shelter >= URGENT_SUGGESTION_THRESHOLD_DAYS && (
+                <div className="mt-1.5 bg-orange-50 border border-orange-100 rounded-xl p-2">
+                  <p className="text-xs text-[#712B13] mb-1">
+                    Lleva {pet.days_in_shelter} días — ¿marcar como urgente?
+                  </p>
+                  <button
+                    onClick={() => suggestUrgent(pet.id)}
+                    className="w-full bg-[#C04828] text-white rounded-lg py-1.5 text-xs font-medium"
+                  >
+                    Marcar urgente
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
