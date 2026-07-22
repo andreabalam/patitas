@@ -75,6 +75,7 @@ export default function Home() {
         <h1 className="text-xl font-medium text-[#C04828]">patitas.</h1>
         {signedIn ? (
           <div className="flex gap-3 text-xs text-gray-400">
+            <Link href="/inbox">Inbox</Link>
             <Link href="/my-requests">Mis solicitudes</Link>
             <Link href="/dashboard">Mi panel</Link>
           </div>

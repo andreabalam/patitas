@@ -61,6 +61,19 @@ export default function PetDetail({
   const sexLabel = pet.sex === 'male' ? 'Macho' : pet.sex === 'female' ? 'Hembra' : null
   const sizeLabel = pet.size === 'small' ? 'Pequeño' : pet.size === 'medium' ? 'Mediano' : pet.size === 'large' ? 'Grande' : null
 
+  async function handleShareLink() {
+    const url = window.location.href
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: pet!.name, text: `Conoce a ${pet!.name} en Patitas`, url })
+      } catch {
+        // user cancelled the native share sheet — nothing to do
+      }
+    } else {
+      await navigator.clipboard.writeText(url)
+    }
+  }
+
   return (
     <main className="pb-32">
       {/* Back button */}
@@ -68,7 +81,12 @@ export default function PetDetail({
         <Link href="/" className="text-gray-500 text-sm flex items-center gap-1">
           ← Volver
         </Link>
-        <FavoriteButton petId={pet.id} className="text-xl" />
+        <div className="flex items-center gap-3">
+          <button onClick={handleShareLink} aria-label="Compartir link" className="text-gray-400 text-xl">
+            ↗
+          </button>
+          <FavoriteButton petId={pet.id} className="text-xl" />
+        </div>
       </div>
 
       {/* Photo */}
@@ -105,6 +123,13 @@ export default function PetDetail({
             .filter(Boolean)
             .join(' · ')}
         </p>
+
+        <Link
+          href={`/pets/${pet.id}/share`}
+          className="inline-block text-sm text-[#C04828] underline mb-4"
+        >
+          Compartir tarjeta para redes sociales
+        </Link>
 
         {/* Description */}
         {pet.description && (

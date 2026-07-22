@@ -316,6 +316,14 @@ export default function Dashboard() {
               {!pet.is_active && (
                 <p className="text-xs text-[#3B6D11] text-center mt-1">✓ Adoptada</p>
               )}
+              {pet.is_active && (
+                <Link
+                  href={`/pets/${pet.id}/share`}
+                  className="block text-center text-xs text-[#C04828] underline mt-1.5"
+                >
+                  Compartir
+                </Link>
+              )}
               {pet.is_active && !pet.is_urgent && pet.days_in_shelter >= URGENT_SUGGESTION_THRESHOLD_DAYS && (
                 <div className="mt-1.5 bg-orange-50 border border-orange-100 rounded-xl p-2">
                   <p className="text-xs text-[#712B13] mb-1">
