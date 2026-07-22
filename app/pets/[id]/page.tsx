@@ -1,28 +1,58 @@
+'use client'
+
+import { use, useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { PetPhoto } from '@/lib/types'
-import { notFound } from 'next/navigation'
+import { Pet, PetPhoto } from '@/lib/types'
 import Link from 'next/link'
 import FavoriteButton from '@/components/FavoriteButton'
 
-export default async function PetDetail({
+export default function PetDetail({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = await params
+  const { id } = use(params)
+  const [pet, setPet] = useState<Pet | null | undefined>(undefined)
 
-  const { data: pet, error } = await supabase
-    .from('pets')
-    .select(`
-      *,
-      pet_photos (*),
-      profiles (full_name, phone)
-    `)
-    .eq('id', id)
-    .eq('is_active', true)
-    .single()
+  useEffect(() => {
+    async function load() {
+      // No is_active filter here: RLS already returns active pets to
+      // anyone, and inactive ones only to their own volunteer (so an
+      // owner can still open their adopted listing; anyone else gets
+      // an empty result, same as if it never existed).
+      const { data } = await supabase
+        .from('pets')
+        .select(`
+          *,
+          pet_photos (*),
+          profiles (full_name, phone)
+        `)
+        .eq('id', id)
+        .single()
 
-  if (error || !pet) notFound()
+      setPet(data ?? null)
+    }
+
+    load()
+  }, [id])
+
+  if (pet === undefined) {
+    return (
+      <main className="px-4 py-16 text-center text-gray-400 text-sm">
+        Cargando…
+      </main>
+    )
+  }
+
+  if (pet === null) {
+    return (
+      <main className="px-4 py-16 text-center text-gray-400">
+        <p className="text-4xl mb-3">🐾</p>
+        <p className="text-sm mb-4">Esta mascota ya no está disponible.</p>
+        <Link href="/" className="text-sm text-[#C04828] underline">Ver otras mascotas</Link>
+      </main>
+    )
+  }
 
   const primaryPhoto = pet.pet_photos?.find((p: PetPhoto) => p.is_primary)
   const emoji = pet.species === 'dog' ? '🐕' : pet.species === 'cat' ? '🐈' : '🐾'
@@ -115,15 +145,23 @@ export default async function PetDetail({
 
       {/* CTA — fixed at bottom */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-6 pt-3 bg-white border-t border-gray-100">
-        <Link
-          href={`/pets/${pet.id}/adopt`}
-          className="block w-full bg-[#C04828] text-white rounded-xl py-3.5 text-sm font-medium mb-2 text-center"
-        >
-          Quiero adoptar a {pet.name}
-        </Link>
-        <button className="w-full border border-gray-200 text-gray-700 rounded-xl py-3.5 text-sm">
-          Hacer una pregunta
-        </button>
+        {pet.is_active ? (
+          <>
+            <Link
+              href={`/pets/${pet.id}/adopt`}
+              className="block w-full bg-[#C04828] text-white rounded-xl py-3.5 text-sm font-medium mb-2 text-center"
+            >
+              Quiero adoptar a {pet.name}
+            </Link>
+            <button className="w-full border border-gray-200 text-gray-700 rounded-xl py-3.5 text-sm">
+              Hacer una pregunta
+            </button>
+          </>
+        ) : (
+          <p className="text-center text-sm text-[#3B6D11] bg-[#EAF3DE] border border-green-100 rounded-xl py-3">
+            ✓ {pet.name} ya fue adoptado
+          </p>
+        )}
       </div>
     </main>
   )
