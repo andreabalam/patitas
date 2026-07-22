@@ -501,3 +501,11 @@ The **days waiting counter** appears on every pet in every context — browse gr
 **Hard blocks are platform decisions, not shelter decisions** — individual shelters cannot permanently block an adopter unilaterally. This prevents abuse of the system and ensures an appeals process exists.
 
 **Transport Board** — volunteer flight couriers posting available routes dramatically lowers the cost and complexity of Mexico → US/CA adoption compared to full cargo shipping.
+
+---
+
+## 13. Backlog / Known Gaps
+
+Small items noticed during implementation that aren't scoped into any phase yet — revisit when relevant.
+
+- **`days_in_shelter` doesn't auto-increment.** It's set once when a volunteer creates a listing and never updates on its own. The "days waiting counter" phases only ask for it to be *displayed*, which works, but if it's meant to tick up daily without volunteer intervention, that needs a small daily job (e.g. a Supabase scheduled function) — not yet built.
